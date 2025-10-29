@@ -1,0 +1,17 @@
+{
+  "name": "module.4",
+  "version": "1.0.0",
+  "main": "todolist.js",
+  "scripts": {
+    "serve": "serve",
+    "json-server": "json-server --watch ./exercise/db.json --port 3000",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "json-server": "^1.0.0-beta.3",
+    "serve": "^14.2.5"
+  }
+}
