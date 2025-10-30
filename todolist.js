@@ -5,7 +5,7 @@ let tasks = []; // In-memory representation of the server's database
 // A mock ID for creation (simulating server assignment)
 let nextId = 1;
 
-const API_HOST = "https://2a566b903314.ngrok-free.app/tasks";
+const API_HOST = "https://4982299ed94b.ngrok-free.app/tasks";
 // --- DOM Elements ---
 const taskInput = document.getElementById("taskInput");
 const addTaskBtn = document.getElementById("addTaskBtn");
@@ -167,7 +167,7 @@ async function addTaskHandler() {
   try {
     await fetch(API_HOST, {
       method: "POST",
-      // headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(task),
     });
     await syncTasksOrderFromDOM();
