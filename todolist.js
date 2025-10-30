@@ -12,6 +12,8 @@ const taskList = document.getElementById("taskList");
 const messageBox = document.getElementById("messageBox");
 const loadingIndicator = document.getElementById("loadingIndicator");
 
+// SortableJS will handle dragging
+
 // --- Helper Functions ---
 
 /**
@@ -36,11 +38,22 @@ function createTaskElement(task) {}
  * READ: Renders the current state of the tasks array to the DOM.
  */
 function renderTasks() {
-  tasks.forEach(addTask);
+  // Clear existing DOM before re-rendering
+  taskList.innerHTML = "";
+  tasks.forEach((task) => addTask(task, false));
 }
 
 function persistTasks() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
+}
+
+// Updates the tasks array to match the current DOM order and persists it
+function syncTasksOrderFromDOM() {
+  const idToTask = Object.fromEntries(tasks.map((t) => [t.id, t]));
+  tasks = Array.from(taskList.children, (li) => idToTask[Number(li.id)])
+    // filter out any undefined tasks
+    .filter(Boolean);
+  persistTasks();
 }
 /**
  * READ: Loads tasks from localStorage (Mock GET /todos).
@@ -58,7 +71,7 @@ function fetchAndRenderTasks() {
 /**
  * CREATE: Adds a new task to the array (Mock POST /todos).
  */
-function addTask({ name, id }) {
+function addTask({ name, id }, insertAtTop = true) {
   const taskElement = document.createElement("li");
   // add class card p-2 mb-2
   taskElement.className = "card p-2 mb-2 d-flex justify-content-between";
@@ -79,7 +92,11 @@ function addTask({ name, id }) {
   });
 
   taskElement.append(...[taskTextElement, taskDateElement, deleteButton]);
-  taskList.prepend(taskElement);
+  if (insertAtTop) {
+    taskList.prepend(taskElement);
+  } else {
+    taskList.appendChild(taskElement);
+  }
 }
 
 /**
@@ -130,3 +147,12 @@ addTaskBtn.addEventListener("click", addTaskHandler);
 console.log("page load");
 // Initial data load
 fetchAndRenderTasks();
+// Initialize SortableJS after initial render
+if (window.Sortable) {
+  Sortable.create(taskList, {
+    animation: 150,
+    onEnd() {
+      syncTasksOrderFromDOM();
+    },
+  });
+}
