@@ -5,6 +5,7 @@ let tasks = []; // In-memory representation of the server's database
 // A mock ID for creation (simulating server assignment)
 let nextId = 1;
 
+const API_HOST = "https://2a566b903314.ngrok-free.app/tasks";
 // --- DOM Elements ---
 const taskInput = document.getElementById("taskInput");
 const addTaskBtn = document.getElementById("addTaskBtn");
@@ -43,27 +44,48 @@ function renderTasks() {
   tasks.forEach((task) => addTask(task, false));
 }
 
-function persistTasks() {
-  localStorage.setItem("tasks", JSON.stringify(tasks));
-}
+function persistTasks() {}
 
 // Updates the tasks array to match the current DOM order and persists it
-function syncTasksOrderFromDOM() {
-  const idToTask = Object.fromEntries(tasks.map((t) => [t.id, t]));
-  tasks = Array.from(taskList.children, (li) => idToTask[Number(li.id)])
-    // filter out any undefined tasks
-    .filter(Boolean);
-  persistTasks();
+async function syncTasksOrderFromDOM() {
+  const idToTask = Object.fromEntries(tasks.map((t) => [String(t.id), t]));
+  tasks = Array.from(taskList.children, (li) => idToTask[li.id]).filter(
+    Boolean
+  );
+  // Persist sequential positions to the API
+  const updates = tasks.map((t, index) =>
+    fetch(`${API_HOST}/${encodeURIComponent(t.id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ position: index }),
+    })
+  );
+  await Promise.allSettled(updates);
+}
+
+async function getTasks() {
+  try {
+    const response = await fetch(`${API_HOST}?_sort=position&_order=asc`);
+    if (!response.ok) {
+      throw new Error(`Response status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(error.message);
+    return [];
+  }
 }
 /**
  * READ: Loads tasks from localStorage (Mock GET /todos).
  */
 function fetchAndRenderTasks() {
-  // loaded tasks from local storage
-  tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-
-  // render/display tasks
-  renderTasks();
+  getTasks().then((result) => {
+    tasks = result;
+    renderTasks();
+    const spinner = document.getElementById("spinner");
+    if (spinner) spinner.classList.add("d-none");
+  });
 }
 
 // --- Mock CRUD Operations ---
@@ -75,7 +97,7 @@ function addTask({ name, id }, insertAtTop = true) {
   const taskElement = document.createElement("li");
   // add class card p-2 mb-2
   taskElement.className = "card p-2 mb-2 d-flex justify-content-between";
-  taskElement.setAttribute("id", id);
+  taskElement.setAttribute("id", String(id));
 
   const taskTextElement = document.createElement("div");
   taskTextElement.textContent = name;
@@ -85,10 +107,15 @@ function addTask({ name, id }, insertAtTop = true) {
   const deleteButton = document.createElement("button");
   deleteButton.textContent = "Delete";
   deleteButton.className = "btn btn-danger w-10";
-  deleteButton.addEventListener("click", () => {
+  deleteButton.addEventListener("click", async () => {
     taskElement.remove();
     tasks = tasks.filter((task) => task.id !== id);
-    persistTasks();
+    try {
+      await fetch(`${API_HOST}/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+    } catch (e) {}
+    await syncTasksOrderFromDOM();
   });
 
   taskElement.append(...[taskTextElement, taskDateElement, deleteButton]);
@@ -111,7 +138,7 @@ function deleteTask(id, taskName) {}
 
 // --- Event Listeners (DOM API) ---
 
-function addTaskHandler() {
+async function addTaskHandler() {
   addTaskBtn.className = addTaskBtn.className.replace(
     "btn-primary",
     "btn-success"
@@ -130,15 +157,21 @@ function addTaskHandler() {
     return;
   }
   const task = {
-    id: Math.floor(Math.random() * 1000),
+    id: Math.floor(Math.random() * 1000).toString(),
     name: taskText,
     createAt: new Date(),
     completed: false,
   };
   tasks.unshift(task);
-  persistTasks();
-
   addTask(task);
+  try {
+    await fetch(API_HOST, {
+      method: "POST",
+      // headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(task),
+    });
+    await syncTasksOrderFromDOM();
+  } catch (e) {}
   taskInput.value = "";
 }
 

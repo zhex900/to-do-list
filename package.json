@@ -4,7 +4,7 @@
   "main": "todolist.js",
   "scripts": {
     "serve": "serve",
-    "json-server": "json-server --watch ./exercise/db.json --port 3000",
+    "json-server": "json-server --watch ./db.json --port 3000",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
